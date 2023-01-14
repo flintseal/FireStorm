@@ -11,6 +11,11 @@
     }
   },
   "Table": {
+    "0x542B5671,2": {
+      "Column 0  Width": "262",
+      "Column 1  Width": "431",
+      "RefScale": "13"
+    },
     "0xE56EC1C2,4": {
       "Column 0  Weight": "1.0000",
       "Column 1  Weight": "1.0000",
@@ -26,27 +31,27 @@
     },
     "###Joysticks": {
       "Collapsed": "0",
-      "Pos": "217,285",
+      "Pos": "155,29",
       "Size": "796,240"
     },
     "###NetworkTables": {
       "Collapsed": "0",
-      "Pos": "189,79",
-      "Size": "750,185"
+      "Pos": "225,305",
+      "Size": "737,352"
     },
     "###NetworkTables Info": {
       "Collapsed": "0",
-      "Pos": "12,733",
+      "Pos": "291,538",
       "Size": "750,145"
     },
     "###Other Devices": {
       "Collapsed": "0",
-      "Pos": "1028,16",
+      "Pos": "1008,22",
       "Size": "250,695"
     },
     "###RoboRIO": {
       "Collapsed": "0",
-      "Pos": "1400,142",
+      "Pos": "8,690",
       "Size": "119,146"
     },
     "###System Joysticks": {

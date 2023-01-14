@@ -25,12 +25,17 @@
           "open": true
         }
       },
+      "PowerReadouts": {
+        "open": true
+      },
       "RobotData": {
         "open": true
       }
     }
   },
   "NetworkTables Info": {
-    "visible": true
+    "Connections": {
+      "open": true
+    }
   }
 }

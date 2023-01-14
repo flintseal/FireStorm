@@ -9,11 +9,15 @@ class MyRobot(wpilib.TimedRobot):
         self.networkTablesServer.startServer()
         self.robotDataNetworkTable = self.networkTablesServer.getTable("RobotData")
 
-        # Initialise Percent Output Data
-        self.netLeftMotorPercentage = self.networkTablesServer.getDoubleTopic("LeftMotorOutput").publish()
-        self.netRightMotorPercentage = self.networkTablesServer.getDoubleTopic("RightMotorOutput").publish()
-        self.netBackLeftMotorPercentage = self.networkTablesServer.getDoubleTopic("BackLeftMotorOutput").publish()
-        self.netBackRightMotorPercentage = self.networkTablesServer.getDoubleTopic("BackRightMotorOutput").publish()
+        # Variable Mode Initialisation
+        self.netTestMode = self.networkTablesServer.getStringTopic("TestMode").subscribe("PFC")
+        self.netMotorOutputMode = self.networkTablesServer.getStringTopic("MotorOutputMode").subscribe("%")
+
+        # Initialise Motor Output Data
+        self.netLeftMotor = self.networkTablesServer.getDoubleTopic("LeftMotorOutput").publish()
+        self.netRightMotor = self.networkTablesServer.getDoubleTopic("RightMotorOutput").publish()
+        self.netBackLeftMotor = self.networkTablesServer.getDoubleTopic("BackLeftMotorOutput").publish()
+        self.netBackRightMotor = self.networkTablesServer.getDoubleTopic("BackRightMotorOutput").publish()
 
         # Initialise Controller Output Data
         self.networkTableLeftY = self.robotDataNetworkTable.getDoubleTopic("Left-Y").publish()
@@ -38,9 +42,31 @@ class MyRobot(wpilib.TimedRobot):
         self.xboxController = wpilib.XboxController(0)
 
     def robotPeriodic(self):
-        # self.LeftMotor.getMotorOutputPercent()
+        # Publish Important Controller Values
         self.networkTableLeftY.set(self.xboxController.getLeftY())
         self.networkTableRightY.set(self.xboxController.getRightY())
+
+        # Publish Motor Output
+        if self.netMotorOutputMode == "%":
+            self.netLeftMotor.set(self.LeftMotor.getMotorOutputPercent())
+            self.netRightMotor.set(self.RightMotor.getMotorOutputPercent())
+            self.netBackLeftMotor.set(self.backLeftMotor.getMotorOutputPercent())
+            self.netBackRightMotor.set(self.backRightMotor.getMotorOutputPercent())
+        elif self.netMotorOutputMode == "V":
+            self.netLeftMotor.set(self.LeftMotor.getMotorOutputVoltage())
+            self.netRightMotor.set(self.RightMotor.getMotorOutputVoltage())
+            self.netBackLeftMotor.set(self.backLeftMotor.getMotorOutputVoltage())
+            self.netBackRightMotor.set(self.backRightMotor.getMotorOutputVoltage())
+        elif self.netMotorOutputMode == "C":
+            self.netLeftMotor.set(self.LeftMotor.getOutputCurrent())
+            self.netRightMotor.set(self.RightMotor.getOutputCurrent())
+            self.netBackLeftMotor.set(self.backLeftMotor.getOutputCurrent())
+            self.netBackRightMotor.set(self.backRightMotor.getOutputCurrent())
+        elif self.netMotorOutputMode == "W":
+            self.netLeftMotor.set(self.LeftMotor.getOutputCurrent()*self.LeftMotor.getMotorOutputVoltage())
+            self.netRightMotor.set(self.RightMotor.getOutputCurrent()*self.RightMotor.getMotorOutputVoltage())
+            self.netBackLeftMotor.set(self.backLeftMotor.getOutputCurrent()*self.backLeftMotor.getMotorOutputVoltage())
+            self.netBackRightMotor.set(self.backRightMotor.getOutputCurrent()*self.backRightMotor.getMotorOutputVoltage())
 
     def teleopInit(self):
         pass
@@ -64,7 +90,10 @@ class MyRobot(wpilib.TimedRobot):
         pass
 
     def testInit(self):
-        pass
+        if self.netTestMode.get() == "PFC":
+            pass
+        else:
+            pass
 
     def testPeriodic(self):
         pass

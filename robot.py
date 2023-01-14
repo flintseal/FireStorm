@@ -13,6 +13,7 @@ class MyRobot(wpilib.TimedRobot):
         self.robotPowerReadoutNetworkTable = self.networkTablesServer.getTable("PowerReadouts")
 
         # Variable Mode and Readout Initialisation
+        # TODO: Ask if any more readouts wanted
         self.netPDTemperature = self.robotPowerReadoutNetworkTable.getStringTopic("PD Temperature").publish()
         self.netPDCurrent = self.robotPowerReadoutNetworkTable.getStringTopic("PD Total Amps").publish()
         self.netPDEnergy = self.robotPowerReadoutNetworkTable.getStringTopic("PD Total Joules").publish()
@@ -41,7 +42,7 @@ class MyRobot(wpilib.TimedRobot):
         self.networkTableRightY = self.robotDataNetworkTable.getDoubleTopic("Right-Y").publish()
 
         # Motor Configuration
-        # TODO: Ask if follow mode is preferable
+        # TODO: Follow Mode?
         self.LeftMotor = ctre.TalonSRX(1)
         self.RightMotor = ctre.TalonSRX(2)
         self.backLeftMotor = ctre.TalonSRX(3)
@@ -102,6 +103,7 @@ class MyRobot(wpilib.TimedRobot):
         pass
 
     def teleopPeriodic(self):
+        # TODO: Implement Idiot-Proofing Mode
         if self.stickyBrownoutTriggered:
             self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
             self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)

@@ -24,6 +24,9 @@
         ".status": {
           "open": true
         }
+      },
+      "RobotData": {
+        "open": true
       }
     }
   },

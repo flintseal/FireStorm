@@ -14,10 +14,10 @@ class MyRobot(wpilib.TimedRobot):
         self.netMotorOutputMode = self.networkTablesServer.getStringTopic("MotorOutputMode").subscribe("%")
 
         # Initialise Motor Output Data
-        self.netLeftMotor = self.networkTablesServer.getDoubleTopic("LeftMotorOutput").publish()
-        self.netRightMotor = self.networkTablesServer.getDoubleTopic("RightMotorOutput").publish()
-        self.netBackLeftMotor = self.networkTablesServer.getDoubleTopic("BackLeftMotorOutput").publish()
-        self.netBackRightMotor = self.networkTablesServer.getDoubleTopic("BackRightMotorOutput").publish()
+        self.netLeftMotor = self.robotDataNetworkTable.getDoubleTopic("LeftMotorOutput").publish()
+        self.netRightMotor = self.robotDataNetworkTable.getDoubleTopic("RightMotorOutput").publish()
+        self.netBackLeftMotor = self.robotDataNetworkTable.getDoubleTopic("BackLeftMotorOutput").publish()
+        self.netBackRightMotor = self.robotDataNetworkTable.getDoubleTopic("BackRightMotorOutput").publish()
 
         # Initialise Controller Output Data
         self.networkTableLeftY = self.robotDataNetworkTable.getDoubleTopic("Left-Y").publish()
@@ -41,6 +41,11 @@ class MyRobot(wpilib.TimedRobot):
         self.pilotsStick = wpilib.Joystick(1)
         self.xboxController = wpilib.XboxController(0)
 
+        # Create Timestamp & Other Variables
+        self.testTimestamp = 0
+        self.pfcTestStages = ["Init", "Motors", "Sensors", "Electrical"]
+        self.pfcTestStage = 0
+
     def robotPeriodic(self):
         # Publish Important Controller Values
         self.networkTableLeftY.set(self.xboxController.getLeftY())
@@ -63,10 +68,15 @@ class MyRobot(wpilib.TimedRobot):
             self.netBackLeftMotor.set(self.backLeftMotor.getOutputCurrent())
             self.netBackRightMotor.set(self.backRightMotor.getOutputCurrent())
         elif self.netMotorOutputMode == "W":
-            self.netLeftMotor.set(self.LeftMotor.getOutputCurrent()*self.LeftMotor.getMotorOutputVoltage())
-            self.netRightMotor.set(self.RightMotor.getOutputCurrent()*self.RightMotor.getMotorOutputVoltage())
-            self.netBackLeftMotor.set(self.backLeftMotor.getOutputCurrent()*self.backLeftMotor.getMotorOutputVoltage())
-            self.netBackRightMotor.set(self.backRightMotor.getOutputCurrent()*self.backRightMotor.getMotorOutputVoltage())
+            self.netLeftMotor.set(self.LeftMotor.getOutputCurrent() * self.LeftMotor.getMotorOutputVoltage())
+            self.netRightMotor.set(self.RightMotor.getOutputCurrent() * self.RightMotor.getMotorOutputVoltage())
+            self.netBackLeftMotor.set(
+                self.backLeftMotor.getOutputCurrent() * self.backLeftMotor.getMotorOutputVoltage())
+            self.netBackRightMotor.set(
+                self.backRightMotor.getOutputCurrent() * self.backRightMotor.getMotorOutputVoltage())
+
+        # Raise Value Errors
+        assert -1 < self.pfcTestStage < 4 and isinstance(self.pfcTestStage, int)
 
     def teleopInit(self):
         pass
@@ -90,13 +100,24 @@ class MyRobot(wpilib.TimedRobot):
         pass
 
     def testInit(self):
-        if self.netTestMode.get() == "PFC":
-            pass
+        if self.netTestMode.get() == "MF":
+            self.testTimestamp = wpilib.Timer.getFPGATimestamp()
+            # TODO: Create Move Forward Protocol
         else:
-            pass
+            self.testTimestamp = wpilib.Timer.getFPGATimestamp()
+            # TODO: Turn off all motors and get battery percentage
+            # TODO: Test Each Motor
+            # TODO: Test Sensors
 
     def testPeriodic(self):
-        pass
+        if self.netTestMode.get() == "MF":
+            # TODO: Create Move Forward Protocol
+            pass
+        else:
+            self.testTimestamp = wpilib.Timer.getFPGATimestamp()
+            # TODO: Turn off all motors and get battery percentage
+            # TODO: Test Each Motor
+            # TODO: Test Sensors
 
 
 if __name__ == "__main__":

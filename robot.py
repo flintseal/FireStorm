@@ -1,8 +1,13 @@
-import rev, ctre, wpilib, robotpy_apriltag, ntcore
+import ctre
+import ntcore
+import wpilib
 
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self):
+        # Camera Server
+        wpilib.CameraServer.launch()
+
         # Hardware Configuration
         self.powerDistribution = wpilib.PowerDistribution(module=0, moduleType=wpilib.PowerDistribution.ModuleType(1))
 
@@ -43,10 +48,10 @@ class MyRobot(wpilib.TimedRobot):
 
         # Motor Configuration
         # TODO: Follow Mode?
-        self.LeftMotor = ctre.TalonSRX(1)
-        self.RightMotor = ctre.TalonSRX(2)
-        self.backLeftMotor = ctre.TalonSRX(3)
-        self.backRightMotor = ctre.TalonSRX(4)
+        self.LeftMotor = ctre.TalonSRX(3)
+        self.RightMotor = ctre.TalonSRX(4)
+        self.backLeftMotor = ctre.TalonSRX(1)
+        self.backRightMotor = ctre.TalonSRX(2)
         self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
 
@@ -80,24 +85,24 @@ class MyRobot(wpilib.TimedRobot):
             self.netLeftMotor.set(self.LeftMotor.getMotorOutputVoltage())
             self.netRightMotor.set(self.RightMotor.getMotorOutputVoltage())
             self.netBackLeftMotor.set(self.backLeftMotor.getMotorOutputVoltage())
-            self.netBackRightMotor.set(self.backRightMotor.getMotorOutputVoltage())
+            self.netBackRightMotor.set(-self.backRightMotor.getMotorOutputVoltage())
         elif self.netMotorOutputMode == "C":
             self.netLeftMotor.set(self.LeftMotor.getOutputCurrent())
             self.netRightMotor.set(self.RightMotor.getOutputCurrent())
             self.netBackLeftMotor.set(self.backLeftMotor.getOutputCurrent())
-            self.netBackRightMotor.set(self.backRightMotor.getOutputCurrent())
+            self.netBackRightMotor.set(-self.backRightMotor.getOutputCurrent())
         elif self.netMotorOutputMode == "W":
             self.netLeftMotor.set(self.LeftMotor.getOutputCurrent() * self.LeftMotor.getMotorOutputVoltage())
             self.netRightMotor.set(self.RightMotor.getOutputCurrent() * self.RightMotor.getMotorOutputVoltage())
             self.netBackLeftMotor.set(
                 self.backLeftMotor.getOutputCurrent() * self.backLeftMotor.getMotorOutputVoltage())
             self.netBackRightMotor.set(
-                self.backRightMotor.getOutputCurrent() * self.backRightMotor.getMotorOutputVoltage())
+                self.backRightMotor.getOutputCurrent() * -self.backRightMotor.getMotorOutputVoltage())
         else:
             self.netLeftMotor.set(self.LeftMotor.getMotorOutputPercent())
             self.netRightMotor.set(self.RightMotor.getMotorOutputPercent())
             self.netBackLeftMotor.set(self.backLeftMotor.getMotorOutputPercent())
-            self.netBackRightMotor.set(self.backRightMotor.getMotorOutputPercent())
+            self.netBackRightMotor.set(-self.backRightMotor.getMotorOutputPercent())
 
     def teleopInit(self):
         pass
@@ -110,8 +115,8 @@ class MyRobot(wpilib.TimedRobot):
             self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
             self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         else:
-            self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=self.xboxController.getLeftY())
-            self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=self.xboxController.getLeftY())
+            self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=-self.xboxController.getLeftY())
+            self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=-self.xboxController.getLeftY())
             self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=self.xboxController.getRightY())
             self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=self.xboxController.getRightY())
 
@@ -237,6 +242,10 @@ class MyRobot(wpilib.TimedRobot):
                 elif self.pfcTestStage == 1 and self.pfcTestStageComplete:
                     self.netTestReadout.set("PFC: Press A to Continue to stage 2")
                 elif self.pfcTestStage == 2:
+                    self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
                     self.sendElectricalData()
                 # TODO: Add Sensor Tests
 

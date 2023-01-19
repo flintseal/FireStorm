@@ -55,6 +55,11 @@ class MyRobot(wpilib.TimedRobot):
         self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
 
+        # Apriltag Data
+        self.netAprilTagLocationY = self.robotDataNetworkTable.getStringTopic("AprilTagLocationX").subscribe("None")
+        self.netAprilTagLocationX = self.robotDataNetworkTable.getStringTopic("AprilTagLocationY").subscribe("None")
+        self.netAprilTagLocationT = self.robotDataNetworkTable.getStringTopic("AprilTagLocationTimestamp").subscribe("None")
+
         # Controller Configuration
         self.pilotsStick = wpilib.Joystick(1)
         self.xboxController = wpilib.XboxController(0)
@@ -65,6 +70,7 @@ class MyRobot(wpilib.TimedRobot):
         self.pfcTestStage = None
         self.pfcTestStageComplete = False
         self.stickyBrownoutTriggered = False
+        self.lastATTimestamp = 0
         if wpilib.DriverStation.isFMSAttached():
             self.stickyBrownoutEnabled = False
         else:
@@ -159,7 +165,26 @@ class MyRobot(wpilib.TimedRobot):
             self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
             self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         else:
-            pass
+            yValue = float(self.netAprilTagLocationY.get())
+            xValue = float(self.netAprilTagLocationX.get())
+            tValue = float(self.netAprilTagLocationT.get())
+
+            if (tValue - self.lastATTimestamp) > 2:
+                if xValue > 20:
+                    self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0.5)
+                # elif xValue < 90:
+                #     self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0.5)
+                else:
+                    self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                    self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+            else:
+                self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+                self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+            self.lastATTimestamp = tValue
 
     def testInit(self):
         if self.netTestMode.get() == "MF":

@@ -1,7 +1,7 @@
 import cv2
 import urllib.request
 import numpy as np
-from pupil_apriltags import Detector
+from pupil_apriltags import Detector  # TODO: Replace with Aruco Marker Library
 import threading
 from networktables import NetworkTables
 import time

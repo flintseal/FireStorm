@@ -5,6 +5,16 @@ import wpilib
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self):
+        # Pneumatics Config
+        self.pneumaticsController = wpilib.PneumaticHub()
+        self.compressor = self.pneumaticsController.makeCompressor()
+        self.armSolenoidLeft = self.pneumaticsController.makeSolenoid(0)  # TODO: Locate bus location
+        self.armSolenoidRight = self.pneumaticsController.makeSolenoid(1)  # TODO: Locate bus location
+
+        # Encoder Config
+        self.leftSideEncoder = wpilib.Encoder(0, 1)
+        self.rightSideEncoder = wpilib.Encoder(2, 3)
+
         # Camera Server
         wpilib.CameraServer.launch()
 
@@ -16,9 +26,9 @@ class MyRobot(wpilib.TimedRobot):
         self.networkTablesServer.startServer()
         self.robotDataNetworkTable = self.networkTablesServer.getTable("RobotData")
         self.robotPowerReadoutNetworkTable = self.networkTablesServer.getTable("PowerReadouts")
+        self.robotPIDNetworkTable = self.networkTablesServer.getTable("PID Tuning")
 
         # Variable Mode and Readout Initialisation
-        # TODO: Ask if any more readouts wanted
         self.netPDTemperature = self.robotPowerReadoutNetworkTable.getStringTopic("PD Temperature").publish()
         self.netPDCurrent = self.robotPowerReadoutNetworkTable.getStringTopic("PD Total Amps").publish()
         self.netPDEnergy = self.robotPowerReadoutNetworkTable.getStringTopic("PD Total Joules").publish()
@@ -47,13 +57,17 @@ class MyRobot(wpilib.TimedRobot):
         self.networkTableRightY = self.robotDataNetworkTable.getDoubleTopic("Right-Y").publish()
 
         # Motor Configuration
-        # TODO: Follow Mode?
         self.LeftMotor = ctre.TalonSRX(3)
         self.RightMotor = ctre.TalonSRX(4)
         self.backLeftMotor = ctre.TalonSRX(1)
         self.backRightMotor = ctre.TalonSRX(2)
         self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+        
+        # PID Tuning Variables
+        # TODO: Make better default values
+        self.netPIDProportionalGain = self.robotPIDNetworkTable.getFloatTopic("Proportional Gain").subscribe(defaultValue=0.5)
+        self.netPIDIntegralGain = self.robotPIDNetworkTable.getFloatTopic("Integral Gain").subscribe(defaultValue=0.5)
 
         # Apriltag Data
         self.netAprilTagLocationY = self.robotDataNetworkTable.getStringTopic("AprilTagLocationX").subscribe("None")
@@ -61,16 +75,20 @@ class MyRobot(wpilib.TimedRobot):
         self.netAprilTagLocationT = self.robotDataNetworkTable.getStringTopic("AprilTagLocationTimestamp").subscribe("None")
 
         # Controller Configuration
+        # TODO: Test and setup joystick for everything but drive
         self.pilotsStick = wpilib.Joystick(1)
         self.xboxController = wpilib.XboxController(0)
 
         # Create Timestamp & Other Variables
+        self.previousErrorValueLeft = 0
+        self.previousErrorValueRight = 0
         self.testTimestamp = 0
         self.pfcTestStages = ["Init", "Motors", "Sensors", "Electrical"]
         self.pfcTestStage = None
         self.pfcTestStageComplete = False
         self.stickyBrownoutTriggered = False
         self.lastATTimestamp = 0
+        self.desiredTestRotationsValue = 1000
         if wpilib.DriverStation.isFMSAttached():
             self.stickyBrownoutEnabled = False
         else:
@@ -86,7 +104,6 @@ class MyRobot(wpilib.TimedRobot):
         self.networkTableRightY.set(self.xboxController.getRightY())
 
         # Publish Motor Output
-        # TODO: Test this with real robot
         if self.netMotorOutputMode == "V":
             self.netLeftMotor.set(self.LeftMotor.getMotorOutputVoltage())
             self.netRightMotor.set(self.RightMotor.getMotorOutputVoltage())
@@ -114,12 +131,9 @@ class MyRobot(wpilib.TimedRobot):
         pass
 
     def teleopPeriodic(self):
-        # TODO: Implement Idiot-Proofing Mode
+        # TODO: Implement Idiot-Proofing Mode with Equation from Ethan
         if self.stickyBrownoutTriggered:
-            self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+            self.brownoutDisabler()
         else:
             self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=-self.xboxController.getLeftY())
             self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=-self.xboxController.getLeftY())
@@ -127,6 +141,9 @@ class MyRobot(wpilib.TimedRobot):
             self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=self.xboxController.getRightY())
 
     def disabledInit(self):
+        self.leftSideEncoder.reset()
+        self.rightSideEncoder.reset()
+        self.compressor.disable()
         self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
@@ -149,10 +166,18 @@ class MyRobot(wpilib.TimedRobot):
         self.netMBLBusVoltage.set("Disabled")
 
     def disabledPeriodic(self):
+        self.compressor.disable()
         self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
         self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+
+    def brownoutDisabler(self):
+        self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+        self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+        self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+        self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+        self.compressor.disable()
 
     def autonomousInit(self):
         # TODO: The Future of Autonomous: https://robotpy.readthedocs.io/projects/pathplannerlib/en/stable/api.html
@@ -160,10 +185,7 @@ class MyRobot(wpilib.TimedRobot):
 
     def autonomousPeriodic(self):
         if self.stickyBrownoutTriggered:
-            self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+            self.brownoutDisabler()
         else:
             yValue = float(self.netAprilTagLocationY.get())
             xValue = float(self.netAprilTagLocationX.get())
@@ -188,21 +210,43 @@ class MyRobot(wpilib.TimedRobot):
 
     def testInit(self):
         if self.netTestMode.get() == "MF":
-            self.testTimestamp = wpilib.Timer.getFPGATimestamp()
+            self.testTimestamp = "First"
+            self.previousErrorValueLeft = "First"
+            self.previousErrorValueRight = "First"
         else:
             self.testTimestamp = None
             self.pfcTestStage = 0
 
     def testPeriodic(self):
         if self.stickyBrownoutTriggered:
-            self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
-            self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
+            self.brownoutDisabler()
         else:
             if self.netTestMode.get() == "MF":
-                # TODO: Create Move Forward Protocol
-                pass
+                # TODO: Level 3 Waypoints
+                # TODO: Test PID
+                self.netPIDProportionalGain.get()
+                self.netPIDIntegralGain.get()
+                if self.testTimestamp == "First":
+                    changeInTime = 0
+                else:
+                    changeInTime = wpilib.Timer.getFPGATimestamp() - self.testTimestamp
+                errorValueLeft = (self.desiredTestRotationsValue - self.leftSideEncoder.get())
+                errorValueRight = (self.desiredTestRotationsValue - self.rightSideEncoder.get())
+                if (self.previousErrorValueLeft == "First") or (self.previousErrorValueRight == "First"):
+                    changeInErrorLeft = 0
+                    changeInErrorRight = 0
+                else:
+                    changeInErrorLeft = errorValueLeft - self.previousErrorValueLeft
+                    changeInErrorRight = errorValueRight - self.previousErrorValueRight
+                controlVariableLeft = (errorValueLeft * self.netPIDProportionalGain.get()) + self.netPIDIntegralGain.get() * (errorValueLeft * changeInTime) + (self.netPIDProportionalGain.get() * (changeInErrorLeft/changeInTime))
+                controlVariableRight = (errorValueRight * self.netPIDProportionalGain.get()) + self.netPIDIntegralGain.get() * (errorValueRight * changeInTime) + (self.netPIDProportionalGain.get() * (changeInErrorRight/changeInTime))
+                self.LeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=controlVariableLeft)
+                self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=controlVariableRight)
+                self.backLeftMotor.set(mode=ctre.ControlMode.PercentOutput, value=controlVariableLeft)
+                self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=controlVariableRight)
+                self.testTimestamp = wpilib.Timer.getFPGATimestamp()
+                self.previousErrorValueLeft = errorValueLeft
+                self.previousErrorValueRight = errorValueRight
             else:
                 if self.pfcTestStage == 0:
                     self.netTestReadout.set("PFC: Press A to Continue to stage 1")
@@ -272,7 +316,6 @@ class MyRobot(wpilib.TimedRobot):
                     self.RightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
                     self.backRightMotor.set(mode=ctre.ControlMode.PercentOutput, value=0)
                     self.sendElectricalData()
-                # TODO: Add Sensor Tests
 
     def sendElectricalData(self):
         self.netPDTemperature.set(str(self.powerDistribution.getTemperature()))

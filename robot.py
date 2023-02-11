@@ -1,12 +1,35 @@
 import ctre
 import ntcore
+import robotpy_apriltag
 import wpilib
 
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self):
+        # April Tag Config
+        self.aprilTagConfig = robotpy_apriltag.AprilTagDetector.Config()
+        self.aprilTagQuadConfig = robotpy_apriltag.AprilTagDetector.QuadThresholdParameters()
+
+        # Config General Image Processing
+        self.aprilTagConfig.debug = True  # Turn off when performing
+        self.aprilTagConfig.decodeSharpening = 0.25  # Sharpening for Small Tags
+        self.aprilTagConfig.numThreads = 2  # Number of threads used to detect
+        self.aprilTagConfig.quadDecimate = 2  # Turn up for performance but less accuracy and detection rate
+        self.aprilTagConfig.quadSigma = 0  # Turn up for Noisy Images by 0.1
+        self.aprilTagConfig.refineEdges = True  # Increase Accuracy if quad_decimate != 0
+
+        # Quadrature Threshold Parameters (Fine Tuning of Angles and Detection Rate)
+        self.aprilTagQuadConfig.criticalAngle = 10  # Tag Corner Angle that the detector will reject tags
+        self.aprilTagQuadConfig.deglitch = False  # Turn on if picture is Very Noisy
+
+        # Create and Define Detector Object's Properties
+        self.aprilTagDetector = robotpy_apriltag.AprilTagDetector()  # Create April Tag Detector Object
+        self.aprilTagDetector.setConfig(self.aprilTagConfig)  # Config General Settings
+        self.aprilTagDetector.setQuadThresholdParameters(self.aprilTagQuadConfig)  # Config Quad Settings
+        self.aprilTagDetector.addFamily("tag16h5")  # Define Tag Family in use
+
         # Pneumatics Config
-        self.pneumaticsController = wpilib.PneumaticHub()
+        self.pneumaticsController = wpilib.PneumaticHub(10)
         self.compressor = self.pneumaticsController.makeCompressor()
         self.armSolenoidLeft = self.pneumaticsController.makeSolenoid(0)  # TODO: Locate bus location
         self.armSolenoidRight = self.pneumaticsController.makeSolenoid(1)  # TODO: Locate bus location
